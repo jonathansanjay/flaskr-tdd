@@ -78,23 +78,44 @@ def test_messages(client):
 
 def test_delete_message(client):
     """Ensure the messages are being deleted"""
-    rv = client.get('/delete/1')
+    rv = client.get("/delete/1")
+    data = json.loads(rv.data)
+    assert data["status"] == 0
+    login(client, app.config["USERNAME"], app.config["PASSWORD"])
+    rv = client.get("/delete/1")
     data = json.loads(rv.data)
     assert data["status"] == 1
 
-# def test_search(client):
-#     """Ensure the search functionality works correctly"""
-#     # Login first to add entries
-#     login(client, app.config["USERNAME"], app.config["PASSWORD"])
+def test_search(client):
+    """Ensure the search functionality works correctly"""
+    # Login first to add entries
+    login(client, app.config["USERNAME"], app.config["PASSWORD"])
     
-#     # Add a few posts
-#     client.post("/add", data=dict(title="First Post", text="Content of the first post"), follow_redirects=True)
-#     client.post("/add", data=dict(title="Second Post", text="Content of the second post"), follow_redirects=True)
-#     client.post("/add", data=dict(title="Third Post", text="Something different"), follow_redirects=True)
+    # Add a few posts
+    client.post("/add", data=dict(title="First Post", text="Content of the first post"), follow_redirects=True)
+    client.post("/add", data=dict(title="Second Post", text="Content of the second post"), follow_redirects=True)
+    client.post("/add", data=dict(title="Third Post", text="Something different"), follow_redirects=True)
     
-#     # Perform search for "First"
-#     rv = client.get("/search/?query=First")
-#     assert rv.status_code == 200
-#     assert b"First Post" in rv.data
-#     assert b"Second Post" not in rv.data
-#     assert b"Third Post" not in rv.data
+    # Perform search for "First"
+    rv = client.get("/search/?query=First")
+    assert rv.status_code == 200
+    assert b"First Post" in rv.data
+    assert b"Second Post" not in rv.data
+    assert b"Third Post" not in rv.data
+
+def test_login_required(client):
+    """Test the login_required decorator"""
+
+    # Test access to the /add route (which is protected by login)
+    rv = client.post('/add', data=dict(title="Test", text="Test"), follow_redirects=True)
+    
+    # Ensure it requires login and returns appropriate response
+    assert rv.status_code == 401
+
+    # Log in and try again
+    login(client, app.config["USERNAME"], app.config["PASSWORD"])
+    rv = client.post('/add', data=dict(title="Test", text="Test"), follow_redirects=True)
+    
+    # Ensure successful posting after login
+    assert rv.status_code == 200
+    assert b"New entry was successfully posted" in rv.data
